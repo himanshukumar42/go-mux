@@ -3,24 +3,43 @@ name: Go
 agent:
   machine:
     type: e1-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu1804
 blocks:
-  - name: Install
+  - name: Test
     task:
       jobs:
-        - name: Go Download Modules
+        - name: go test
           commands:
+            - sem-service start postgres
             - sem-version go 1.16
+            - export GO111MODULE=on
+            - export GOPATH=~/go
+            - 'export PATH=/home/semaphore/go/bin:$PATH'
             - checkout
-            - cache restore
-            - go mod vendor
-            - cache store
+            - go get ./...
+            - source env-test
+            - go test ./...
+            - go build -v .
+    dependencies: []
+  - name: Download
+    dependencies: []
+    task:
       env_vars:
         - name: GO111MODULE
           value: 'on'
         - name: GOFLAGS
           value: '-mod=vendor'
-  - name: Test
+      jobs:
+        - name: go get
+          commands:
+            - sem-version go 1.16
+            - checkout
+            - 'cache restore '
+            - go mod vendor
+            - cache store
+  - name: Tests
+    dependencies:
+      - Download
     task:
       env_vars:
         - name: GO111MODULE
@@ -36,26 +55,27 @@ blocks:
           - go mod vendor
           - source env-sample
       jobs:
-        - name: Go Test
+        - name: go test
           commands:
-            - go test ./..
+            - go test ./...
   - name: Build
+    dependencies:
+      - Tests
     task:
       env_vars:
         - name: GO111MODULE
           value: 'on'
-        - name: GOFLAGS
+        - name: GOFLAG
           value: '-mod=vendor'
       prologue:
         commands:
-          - sem-version go 1.13
+          - sem-version go 1.16
           - sem-service start postgres
           - checkout
           - cache restore
           - go mod vendor
-          - source env-sample
       jobs:
-        - name: Go Build
+        - name: go build
           commands:
             - go build -v -o go-mux.bin
             - artifact push project --force go-mux.bin
