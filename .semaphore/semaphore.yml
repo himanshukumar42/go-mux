@@ -5,20 +5,57 @@ agent:
     type: e1-standard-2
     os_image: ubuntu2004
 blocks:
-  - name: Test
+  - name: Install
     task:
       jobs:
-        - name: go test
+        - name: Go Download Modules
           commands:
-            - sem-service start postgres
-            - sudo apt-get install -y -qq postgresql-client
-            - createdb -U postgres -h 0.0.0.0 testdb
-            - psql -h 0.0.0.0 -U postgres -c "\l" | grep testdb
             - sem-version go 1.16
-            - export GO111MODULE=on
-            - export GOPATH=~/go
-            - 'export PATH=/home/semaphore/go/bin:$PATH'
             - checkout
-            - go get ./...
-            - go test ./...
-            - go build -v .
+            - cache restore
+            - go mod vendor
+            - cache store
+      env_vars:
+        - name: GO111MODULE
+          value: 'on'
+        - name: GOFLAGS
+          value: '-mod=vendor'
+  - name: Test
+    task:
+      env_vars:
+        - name: GO111MODULE
+          value: 'on'
+        - name: GOFLAGS
+          value: '-mod=vendor'
+      prologue:
+        commands:
+          - sem-version go 1.13
+          - sem-service start postgres
+          - checkout
+          - cache restore
+          - go mod vendor
+          - source env-sample
+      jobs:
+        - name: Go Test
+          commands:
+            - go test ./..
+  - name: Build
+    task:
+      env_vars:
+        - name: GO111MODULE
+          value: 'on'
+        - name: GOFLAGS
+          value: '-mod=vendor'
+      prologue:
+        commands:
+          - sem-version go 1.13
+          - sem-service start postgres
+          - checkout
+          - cache restore
+          - go mod vendor
+          - source env-sample
+      jobs:
+        - name: Go Build
+          commands:
+            - go build -v -o go-mux.bin
+            - artifact push project --force go-mux.bin
