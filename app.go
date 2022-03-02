@@ -24,7 +24,7 @@ func (a *App) Initialize(user, password, dbname string) {
 	var err error
 	a.DB, err = sql.Open("postgres", connectionString)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Ridicule SSL Error :- ", err)
 	}
 
 	a.Router = mux.NewRouter()
@@ -33,7 +33,7 @@ func (a *App) Initialize(user, password, dbname string) {
 }
 
 func (a *App) Run(addr string) {
-	log.Fatal(http.ListenAndServe(":8080", a.Router))
+	log.Fatal(http.ListenAndServe(":9999", a.Router))
 }
 
 func respondWithError(w http.ResponseWriter, code int, message string) {
@@ -81,9 +81,9 @@ func (a *App) getProducts(w http.ResponseWriter, r *http.Request) {
 	// if start < 0 {
 	// 	start = 0
 	// }
-	count := 1
-	start := 1
-	products, err := getProducts(a.DB, start, count)
+	// count := 1
+	// start := 1
+	products, err := getProducts(a.DB)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, err.Error())
 		return
